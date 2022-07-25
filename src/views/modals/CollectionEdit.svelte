@@ -27,16 +27,16 @@
 		<Col sm="12">
 			<div class="mb-2">
 				<Panel>
-					<label class="form-label" slot="header">Collection Type</label>
+					<label class="form-label" slot="header" for="types">Type</label>
 					<div class="p-2" slot="body">
-						<Select options={typesOptions} bind:value={typeId} />
+						<Select id="types" options={typesOptions} bind:value={typeId} />
 					</div>
 				</Panel>
 			</div>
 			<Panel>
-				<label class="form-label" slot="header">Visibility</label>
+				<label class="form-label" slot="header" for="visibility">Visibility</label>
 				<div class="p-2" slot="body">
-					<Select options={VISIBILITY} bind:value={visibility} />
+					<Select id="visibility" options={VISIBILITY} bind:value={visibility} />
 					{#if visibility === 'shared'}
 						<div class="my-2 py-2">
 							<Divider align="horizontal center" text="Shared with" />
@@ -86,7 +86,7 @@
 	import { searchUsers, getDataSources, getUsers } from '@/services/api';
 	import datasources from '@/stores/datasources';
 	import user from '@/stores/user';
-	import { types } from '@/stores/collections';
+	import { collections, types } from '@/stores/collections';
 
 	import { VISIBILITY } from '@/types/const';
 	import type { User as UserDTO } from '@/types/dto';
@@ -116,14 +116,22 @@
 
 	onMount(getDataSources);
 
-	$: userDataSources = $user ? $datasources.filter(({ userId }) => userId === $user?.id) : [];
-	$: predefinedDataSources = userDataSources.map(({ name, id }) => ({ label: name, value: id }));
-	$: selectedDataSources = dataSources
-		? predefinedDataSources.filter(({ value }) => dataSources.includes(value))
+	$: userDataSources = $user
+		? $datasources?.data?.filter(({ userId }) => userId === $user?.id)
 		: [];
 
-	$: typesOptions = $types.map(({ label, id: value }) => ({ label, value }));
-	$: if (!typeId && typesOptions.length) {
+	$: predefinedDataSources = userDataSources?.map(({ name, id }) => ({
+		index: id,
+		label: name,
+		value: id,
+	}));
+
+	$: selectedDataSources = dataSources
+		? predefinedDataSources?.filter(({ value }) => dataSources.includes(value))
+		: [];
+
+	$: typesOptions = $collections?.types?.map(({ label, id: value }) => ({ label, value }));
+	$: if (!typeId && typesOptions?.length) {
 		typeId = typesOptions[0].value;
 	}
 
@@ -160,7 +168,7 @@
 	function withoutMe(users: UserDTO[]) {
 		return users.reduce<Item[]>((users, { firstName, lastName, id, email }) => {
 			id !== $user?.id &&
-				users.push({ label: `${firstName} ${lastName} (${email})`, value: id });
+				users.push({ index: id, label: `${firstName} ${lastName} (${email})`, value: id });
 			return users;
 		}, []);
 	}

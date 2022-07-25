@@ -20,7 +20,7 @@ div.distant_msg {
 	overflow-y: visible !important;
 }
 
-.modal .modal-body .menu {
-	max-height: 300px !important;
+.menu {
+	max-height: 260px !important;
 	overflow-x: auto !important;
 }

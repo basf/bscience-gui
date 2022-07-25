@@ -65,6 +65,7 @@
 	import linkedin from '@/assets/img/linkedin.svg';
 	import basf from '@/assets/img/BASF-invert.svg';
 	import orcid from '@/assets/img/ORCID-invert.svg';
+	import { redirect } from 'svelte-pathfinder';
 
 	let email = '';
 	let password = '';

@@ -2,10 +2,13 @@
 
 <script lang="ts" context="module">
 	import { Autocomplete } from 'svelte-spectre';
-	import collections from '@/stores/collections';
+	import { collections } from '@/stores/collections';
+	import { filters } from '@/stores/filters';
 	import user from '@/stores/user';
 
 	import type { Collection } from '@/types/dto';
+	import { getCollections } from '@/services/api';
+	import { onMount } from 'svelte';
 
 	type Tag = {
 		index: number;
@@ -23,8 +26,10 @@
 	let predefined: Tag[] = [],
 		selected: Tag[] = [];
 
-	$: predefined = $collections
-		.filter((collection: Collection) => collection.userId === $user?.id)
+	// onMount(getCollections);
+
+	$: predefined = $filters?.data
+		?.filter((collection: Collection) => collection.userId === $user?.id)
 		.map((collection: Collection) => ({
 			index: collection.id,
 			label: collection.title,
@@ -33,7 +38,7 @@
 			value: collection.dataSources,
 		}));
 
-	$: selected = predefined.filter(({ value }) => value?.includes(dataSourceId));
+	$: selected = predefined?.filter(({ value }) => value?.includes(dataSourceId));
 
-	$: tags = selected.map((s) => s.index);
+	$: tags = selected?.map((s) => s.index);
 </script>

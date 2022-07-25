@@ -1,86 +1,64 @@
 <Main>
-	<DataSearch add bind:addOpen data={$datasources.length} />
+	<Filter icon={add ? 'minus' : 'plus'} action={() => (add = !add)} />
+	<Pagination
+		bind:limit={$query.params.limit}
+		bind:page={$query.params.page}
+		limits={[5, 10, 50, 100]}
+		total={$datasources?.total || 10}
+		rest={7}
+	/>
+
 	<div bind:clientWidth={width}>
-		{#if !$status.hidden}
-			{#await $datasourcesAsync}
-				{#each { length: 4 } as _}
-					<Loaders.Tile count={1} w={width} h={74} height={74} {width} />
-				{/each}
-			{:then datasources}
-				{#if addOpen || !datasources.length}
-					<DataSourceAdd msg={!datasources.length} />
-				{/if}
-				{#each makeDataSourcesList(datasources, search) as datasource (datasource.id)}
-					<DataSource {datasource}>
-						{#if $user?.id === datasource.userId}
-							<TileMenu
-								items={tileMenuItems(datasource.type)}
-								dataId={datasource.id}
-							/>
-						{/if}
-					</DataSource>
-				{/each}
-			{/await}
+		{#if !$datasources?.total}
+			{#each { length: 4 } as _}
+				<Loaders.Tile count={1} w={width} h={74} height={74} {width} />
+			{/each}
+		{:else}
+			{@const { data, total } = $datasources}
+			{#if add || !total}
+				<DataSourceAdd msg={!total} />
+			{/if}
+			{#each data as datasource (datasource.id)}
+				<DataSource {datasource}>
+					{#if $user?.id === datasource.userId}
+						<TileMenu items={tileMenuItems(datasource.type)} dataId={datasource.id} />
+					{/if}
+				</DataSource>
+			{/each}
+			<DataModal {data} />
 		{/if}
 	</div>
 </Main>
 
-<Modal size={$media.sm ? 'fs' : 'lg'} open={!!$fragment} on:close={closeModal}>
-	<h3 slot="header">
-		{@html `Edit and submit ${decodeURIComponent(dataType)} for <mark> ${
-			$datasources.find((d) => d.id === +dataId)?.name
-		} </mark>`}
-	</h3>
-	{#if modal().component}
-		<svelte:component
-			this={modal().component}
-			dataSourceId={+decodeURIComponent(dataId)}
-			bind:tags={tagIds}
-		/>
-	{:else}
-		<span style="height: 100%" class="loading loading-lg p-centered d-block" />
-	{/if}
-	<svelte:fragment slot="footer">
-		<Button on:click={closeModal}>Cancel</Button>
-		<Button variant="primary" on:click={modal().submit}>Submit</Button>
-	</svelte:fragment>
-</Modal>
-
 <script lang="ts" context="module">
-	import { fragment } from 'svelte-pathfinder';
-	import { Button, Modal, toast } from 'svelte-spectre';
-	import { media } from '@/stores/media';
-	import status from '@/stores/status';
+	import { fragment, query } from 'svelte-pathfinder';
+	import { Pagination, toast } from 'svelte-spectre';
 
 	import Main from '@/layouts/Main.svelte';
 
-	import { DataSearch } from '@/components/Search';
+	import { Filter } from '@/components/Filter';
 	import DataSourceAdd from '@/views/DataSource/DataSourceAdd.svelte';
 	import { DataSource } from '@/views/tiles';
 	import * as Loaders from '@/components/loaders';
 
-	import { delDataSource, setCalculation } from '@/services/api';
+	import { delDataSource, getCollections, setCalculation } from '@/services/api';
 
-	import datasources, { datasourcesAsync } from '@/stores/datasources';
+	import { datasources } from '@/stores/datasources';
 	import { withConfirm } from '@/stores/confirmator';
 
-	import { CalculationEdit, PlotEdit, TagsEdit } from '@/views/modals';
-	import { patchDataSourceCollections } from '@/services/api';
+	import { DataModal } from '@/views/modals';
 
 	import user from '@/stores/user';
 	import { TileMenu } from '@/components/Tile/';
 	import Sinus from '@/assets/img/sinus.svg';
-
-	import { editorCode } from '@/stores/editor';
-
-	import type { DataSource as DataSourceDTO } from '@/types/dto';
+	import { onMount } from 'svelte';
 </script>
 
 <script lang="ts">
-	let width = 0;
-	let search = '';
-	let addOpen = false;
-	let tagIds = [];
+	let width = 0,
+		add = false;
+
+	// onMount(getCollections);
 
 	const tileMenuItems = (type: number) => {
 		const editCalc = {
@@ -113,63 +91,16 @@
 		return [type === 1 ? runCalc : null, editCalc, editTag, deleteData].filter(Boolean);
 	};
 
-
-	function makeDataSourcesList(items: DataSourceDTO[], search: string) {
-		return search
-			? items.filter((item) => match(item, search))
-			: items.sort((a, b) => b.id - a.id);
-	}
-
-	function closeModal() {
-		$fragment = '';
-	}
-
-	$: modal = () => {
-		switch (dataType) {
-			case 'calculation':
-				return {
-					component: CalculationEdit,
-					submit: submitCalculation,
-				};
-			case 'tags':
-				return {
-					component: TagsEdit,
-					submit: submitTags,
-				};
-			case 'plot':
-				return {
-					component: PlotEdit,
-					submit: submitPlots,
-				};
-			default:
-				return {
-					component: undefined,
-					submit: () => {},
-				};
-		}
-	};
-
-	$: [_, dataType, dataId] = $fragment.split('-');
-
 	async function editCalculation(id: number) {
 		$fragment = `#edit-calculation-${id}`;
-	}
-	function submitCalculation() {
-		setCalculation(+dataId, 'dummy', $editorCode.input).then(() => closeModal());
 	}
 
 	function editTags(id: number) {
 		$fragment = `#edit-tags-${id}`;
 	}
-	async function submitTags() {
-		await patchDataSourceCollections(+dataId, tagIds).then(() => closeModal());
-	}
 
 	function editPlots(id: number) {
 		$fragment = `#edit-plot-${id}`;
-	}
-	function submitPlots() {
-		closeModal();
 	}
 
 	function runCalculation(id: number) {
